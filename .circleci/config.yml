@@ -245,11 +245,9 @@ jobs:
           command: |
             if [[ -n ${CIRCLE_PULL_REQUEST} && -n ${GITHUB_PR_BASE_TOKEN} ]]
               then
-                curl -L "https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64" -o ~/jq
-                chmod +x ~/jq
-                BASE_BRANCH=origin/$(curl -u shnizzedy:$GITHUB_PR_BASE_TOKEN "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/pulls/${CIRCLE_PULL_REQUEST##*/}" | ~/jq '.base.ref' | tr -d '"')
+                BASE_BRANCH=origin/$(curl -u shnizzedy:$GITHUB_PR_BASE_TOKEN "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/pulls/${CIRCLE_PULL_REQUEST##*/}" | jq '.base.ref' | tr -d '"')
                 dev/circleci_data/prep_merge $BASE_BRANCH
-                git rebase $BASE_BRANCH HEAD || git rebase --abort
+                git rebase $BASE_BRANCH HEAD || (git rebase --abort && git checkout $CIRCLE_BRANCH)
             fi
       - run:
           name: "Git-pushing if changed"
