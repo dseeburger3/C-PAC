@@ -107,7 +107,6 @@ commands:
           command: |
             pyenv install 3.6.3
             pyenv global 3.6.3
-            pip install -r dev/circleci_data/requirements.txt
   set-up-singularity:
     steps:
       - install-singularity-requirements
@@ -218,6 +217,9 @@ jobs:
     steps:
       - checkout
       - set-python-version
+      - run:
+          name: "Installing build requirements"
+          command: pip install -r dev/circleci_data/requirements.txt
       - configure-git-user
       - run:
           name: "Checking if version needs updated"
