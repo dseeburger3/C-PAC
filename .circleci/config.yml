@@ -271,6 +271,7 @@ jobs:
       image: ubuntu-2004:202010-01
     steps:
       - get_workspace
+      - check_for_built_images
       - set_python_version
       - generate_random_run
       - create_docker_test_container:
@@ -291,6 +292,7 @@ jobs:
       image: ubuntu-1604:202010-01
     steps:
       - get_workspace
+      - check_for_built_images
       - set_python_version:
           version: 3.6.3
       - set_up_singularity:
@@ -313,6 +315,7 @@ jobs:
       image: ubuntu-2004:202010-01
     steps:
       - get_workspace
+      - check_for_built_images
       - set_python_version
       - set_up_singularity:
           version: v3.6.4
