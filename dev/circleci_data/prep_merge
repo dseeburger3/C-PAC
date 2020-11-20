@@ -1,8 +1,8 @@
 #!/bin/bash
-
+# Helper script to prepare for merging. Takes the branch name or SHA of the merge base ($BASE_BRANCH)..
 if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]
   then
-    echo "usage: prep_merge \$BASE_BRANCH"
+    echo "Usage: prep_merge \$BASE_BRANCH"
 else
   CIRCLECI_DATA=$(dirname $0)
   FILES_TO_REVERT=$(git diff $1 --stat=999999 | $CIRCLECI_DATA/override_version_tag_list)
