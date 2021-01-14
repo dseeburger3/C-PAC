@@ -48,7 +48,6 @@ def get_zscore(input_name, map_node=False, wf_name='z_score'):
     -----
     `Source <https://github.com/FCP-INDI/C-PAC/blob/master/CPAC/network_centrality/z_score.py>`_
 
-
     Workflow Inputs::
 
         inputspec.input_file : string
@@ -61,15 +60,23 @@ def get_zscore(input_name, map_node=False, wf_name='z_score'):
         outputspec.z_score_img : string
              path to image containing Normalized Input Image Z scores across full brain.
 
+    .. exec::
+        from CPAC.utils import get_zscore
+        wf = get_zscore('mean')
+        wf.write_graph(
+            graph2use='orig',
+            dotfilename='./images/generated/zscore.dot'
+        )
+
     High Level Workflow Graph:
 
-    .. image:: ../images/zscore.dot.png
+    .. image:: ../../images/generated/zscore.png
        :width: 500
 
 
     Detailed Workflow Graph:
 
-    .. image:: ../images/zscore_detailed.dot.png
+    .. image:: ../../images/generated/zscore_detailed.png
        :width: 500
 
     Example
@@ -1218,8 +1225,20 @@ def check_config_resources(c):
     else:
         num_ants_cores = 1
 
+    # Now check OMP
+    if c.num_omp_threads is None:
+        num_omp_cores = 1
+    elif c.num_omp_threads > c.maxCoresPerParticipant:
+        err_msg = 'Number of threads for OMP: %d is greater than the ' \
+                    'number of threads per subject: %d. Change this and ' \
+                    'try again.' % (c.num_omp_threads,
+                                    c.maxCoresPerParticipant)
+        raise Exception(err_msg)
+    else:
+        num_omp_cores = c.num_omp_threads
+
     # Return memory and cores
-    return sub_mem_gb, num_cores_per_sub, num_ants_cores
+    return sub_mem_gb, num_cores_per_sub, num_ants_cores, num_omp_cores
 
 
 def load_preconfig(pipeline_label):

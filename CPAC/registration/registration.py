@@ -95,14 +95,22 @@ def create_fsl_fnirt_nonlinear_reg(name='fsl_fnirt_nonlinear_reg'):
     2. Invert the affine transformation to provide the user a transformation (affine only) from the
        space of the reference file to the input file.
        
+    .. exec::
+        from CPAC.registration import create_fsl_fnirt_nonlinear_reg
+        wf = create_fsl_fnirt_nonlinear_reg()
+        wf.write_graph(
+            graph2use='orig',
+            dotfilename='./images/generated/nonlinear_register.dot'
+        )
+
     Workflow Graph:
     
-    .. image:: ../images/nonlinear_register.dot.png
+    .. image:: ../../images/generated/nonlinear_register.png
         :width: 500
     
     Detailed Workflow Graph:
     
-    .. image:: ../images/nonlinear_register_detailed.dot.png
+    .. image:: ../../images/generated/nonlinear_register_detailed.png
         :width: 500    
        
     """
@@ -212,14 +220,22 @@ def create_register_func_to_mni(name='register_func_to_mni'):
         outputspec.mni_func : string (nifti file)
             Functional scan registered to MNI standard space
             
+    .. exec::
+        from CPAC.registration import create_register_func_to_mni
+        wf = create_register_func_to_mni()
+        wf.write_graph(
+            graph2use='orig',
+            dotfilename='./images/generated/register_func_to_mni.dot'
+        )
+
     Workflow Graph:
     
-    .. image:: ../images/register_func_to_mni.dot.png
+    .. image:: ../../images/generated/register_func_to_mni.png
         :width: 500
         
     Detailed Workflow Graph:
     
-    .. image:: ../images/register_func_to_mni_detailed.dot.png
+    .. image:: ../../images/generated/register_func_to_mni_detailed.png
         :width: 500
     """
     register_func_to_mni = pe.Workflow(name=name)
@@ -536,6 +552,7 @@ def create_register_func_to_epi(name='register_func_to_epi', reg_option='ANTS', 
                                                        'func_3d',
                                                        'func_3d_mask',
                                                        'epi',
+                                                       'epi_mask',
                                                        'interp',
                                                        'ants_para']),
                         name='inputspec')
@@ -566,6 +583,8 @@ def create_register_func_to_epi(name='register_func_to_epi', reg_option='ANTS', 
                 ('epi', 'inputspec.reference_brain'),
                 ('func_3d', 'inputspec.moving_skull'),
                 ('epi', 'inputspec.reference_skull'),
+                ('epi_mask', 'inputspec.reference_mask'),
+                ('func_3d_mask', 'inputspec.moving_mask'),
                 ('interp', 'inputspec.interp'),
                 ('ants_para', 'inputspec.ants_para')
             ]),
@@ -769,14 +788,22 @@ def create_wf_calculate_ants_warp(name='create_wf_calculate_ants_warp', num_thre
     
     1. Calculates a nonlinear anatomical-to-template registration.
 
+    .. exec::
+        from CPAC.registration import create_wf_calculate_ants_warp
+        wf = create_wf_calculate_ants_warp()
+        wf.write_graph(
+            graph2use='orig',
+            dotfilename='./images/generated/calculate_ants_warp.dot'
+        )
+
     Workflow Graph:
     
-    .. image:: 
+    .. image:: ../../images/generated/calculate_ants_warp.png
         :width: 500
 
     Detailed Workflow Graph:
     
-    .. image:: 
+    .. image:: ../../images/generated/calculate_ants_warp_detailed.png
         :width: 500      
     '''
 
@@ -787,6 +814,8 @@ def create_wf_calculate_ants_warp(name='create_wf_calculate_ants_warp', num_thre
                 'reference_brain',
                 'moving_skull',
                 'reference_skull',
+                'reference_mask', 
+                'moving_mask', 
                 'fixed_image_mask',
                 'ants_para',
                 'interp']), 
@@ -816,6 +845,8 @@ def create_wf_calculate_ants_warp(name='create_wf_calculate_ants_warp', num_thre
                                                      'reference_brain',
                                                      'moving_skull',
                                                      'reference_skull',
+                                                     'reference_mask', 
+                                                     'moving_mask', 
                                                      'ants_para',
                                                      'fixed_image_mask',
                                                      'interp'],
@@ -879,6 +910,12 @@ def create_wf_calculate_ants_warp(name='create_wf_calculate_ants_warp', num_thre
 
     calc_ants_warp_wf.connect(inputspec, 'fixed_image_mask',
             calculate_ants_warp, 'fixed_image_mask')
+
+    calc_ants_warp_wf.connect(inputspec, 'reference_mask',
+            calculate_ants_warp, 'reference_mask')
+
+    calc_ants_warp_wf.connect(inputspec, 'moving_mask',
+            calculate_ants_warp, 'moving_mask')
 
     calc_ants_warp_wf.connect(inputspec, 'ants_para',
             calculate_ants_warp, 'ants_para')
@@ -1027,7 +1064,7 @@ def connect_func_to_anat_bbreg(workflow, strat_list, c, diff_complete):
 
     new_strat_list = []
 
-    if 1 in c.runRegisterFuncToAnat and 1 in c.runBBReg:
+    if 1 in c.runRegisterFuncToAnat and True in c.functional_registration['1-coregistration']['boundary_based_registration']['run']:
 
         for num_strat, strat in enumerate(strat_list):
 
@@ -1044,7 +1081,7 @@ def connect_func_to_anat_bbreg(workflow, strat_list, c, diff_complete):
 
                 # Input registration parameters
                 func_to_anat_bbreg.inputs.inputspec.bbr_schedule = \
-                    c.boundaryBasedRegistrationSchedule
+                    c.functional_registration['1-coregistration']['boundary_based_registration']['bbr_schedule']
 
                 if 'Mean Functional' in c.func_reg_input:
                     # Input functional image (mean functional)
@@ -1071,14 +1108,19 @@ def connect_func_to_anat_bbreg(workflow, strat_list, c, diff_complete):
 
                 if 'T1_template' in c.template_based_segmentation or \
                         'EPI_template' in c.template_based_segmentation or \
-                            1 in c.ANTs_prior_based_segmentation :
+                            'ANTs-Prior-Based' in c.segmentation_method :
                     # Input segmentation mask,
-                    # since template_based_segmentation or ANTs_prior_based_segmentation cannot generate
+                    # since template-based segmentation or ANTs prior-based segmentation cannot generate
                     # probability maps
                     node, out_file = strat['anatomical_wm_mask']
                     workflow.connect(node, out_file,
-                                    func_to_anat_bbreg,
-                                    'inputspec.anat_wm_segmentation')
+                                        func_to_anat_bbreg,
+                                        'inputspec.anat_wm_segmentation')
+                # elif 'FreeSurfer' in c.segmentation_method:
+                #     node, out_file = strat['anatomical_wm_mask']
+                #     workflow.connect(node, out_file,
+                #                         func_to_anat_bbreg,
+                #                         'inputspec.anat_wm_segmentation')
                 else:
                     # Input segmentation probability maps for white matter
                     # segmentation
@@ -1110,7 +1152,7 @@ def connect_func_to_anat_bbreg(workflow, strat_list, c, diff_complete):
                                         func_to_anat_bbreg,
                                         'inputspec.fieldmapmask')
 
-                if 0 in c.runBBReg:
+                if False in c.functional_registration['1-coregistration']['boundary_based_registration']['run']:
                     strat = strat.fork()
                     new_strat_list.append(strat)
 
@@ -1190,6 +1232,9 @@ def connect_func_to_template_reg(workflow, strat_list, c):
 
                 node, out_file = strat['template_epi']
                 workflow.connect(node, out_file, func_to_epi, 'inputspec.epi')
+
+                node, out_file = strat['template_epi_mask']
+                workflow.connect(node, out_file, func_to_epi, 'inputspec.epi_mask')
 
                 node, out_file = strat['functional_brain_mask']
                 workflow.connect(node, out_file, func_to_epi, 'inputspec.func_3d_mask')

@@ -25,7 +25,8 @@ import nipype.pipeline.engine as pe
 import scipy.ndimage as nd
 import numpy as np
 from CPAC.registration.utils import check_transforms, generate_inverse_transform_flags
-
+from nipype.interfaces import freesurfer
+from CPAC.anat_preproc.utils import mri_convert
 
 def create_seg_preproc(use_ants,
                         use_priors,
@@ -224,16 +225,23 @@ def create_seg_preproc(use_ants,
     >>> seg.inputs.inputspec.brain = '/home/data/Projects/C-PAC/working_directory/s1001/anat_preproc/mprage_brain.nii.gz'
     >>> seg_preproc.run() # doctest: +SKIP
 
+    .. exec::
+        from CPAC.seg_preproc import create_seg_preproc
+        wf = create_seg_preproc(False, False, ['FSL-FAST Thresholding'])
+        wf.write_graph(
+            graph2use='orig',
+            dotfilename='./images/generated/seg_preproc.dot'
+        )
 
     High Level Graph:
 
-    .. image:: ../images/seg_preproc.dot.png
+    .. image:: ../../images/generated/seg_preproc.png
         :width: 1100
-        :height: 480
+        :height: 100
 
     Detailed Graph:
 
-    .. image:: ../images/seg_preproc_detailed.dot.png
+    .. image:: ../../images/generated/seg_preproc_detailed.png
         :width: 1100
         :height: 480
     """
@@ -518,16 +526,27 @@ def process_segment_map(wf_name,
 
     - Generate segment mask, by applying tissue prior in t1 space to thresholded binarized segment probability map
 
+    .. exec::
+        from CPAC.seg_preproc import process_segment_map
+        wf = process_segment_map('segment_map_wf',
+                                False,
+                                False,
+                                ['FSL-FAST Thresholding'],
+                                False)
+        wf.write_graph(
+            graph2use='orig',
+            dotfilename='./images/generated/process_segment_map.dot'
+        )
 
     High Level Graph:
 
-    .. image:: ../images/process_segment_map.dot.png
+    .. image:: ../../images/generated/process_segment_map.png
         :width: 1100
         :height: 480
 
     Detailed Graph:
 
-    .. image:: ../images/process_segment_map_detailed.dot.png
+    .. image:: ../../images/generated/process_segment_map_detailed.png
         :width: 1100
         :height: 480
 
@@ -970,7 +989,8 @@ def tissue_mask_template_to_t1(wf_name,
 
 def create_seg_preproc_antsJointLabel_method(wf_name='seg_preproc_templated_based'):
 
-    """Generate the subject's cerebral spinal fluids,
+    """
+    Generate the subject's cerebral spinal fluids,
     white matter and gray matter mask based on provided template, if selected to do so.
 
     Parameters
@@ -1007,8 +1027,6 @@ def create_seg_preproc_antsJointLabel_method(wf_name='seg_preproc_templated_base
 
         outputspec.wm_mask : string (nifti file)
             outputs White Matter mask
-
-
     """
 
     preproc = pe.Workflow(name = wf_name)
@@ -1102,6 +1120,7 @@ def connect_anat_segmentation(workflow, strat_list, c, strat_name=None):
     )
 
     new_strat_list = []
+
 
     if 1 in c.runSegmentationPreprocessing:
 
@@ -1230,7 +1249,7 @@ def connect_anat_segmentation(workflow, strat_list, c, strat_name=None):
 
     strat_list += new_strat_list
     
-    if 1 in c.ANTs_prior_based_segmentation:
+    if 'ANTs-Prior-Based' in c.segmentation_method:
 
         if 'T1_template' in c.template_based_segmentation or 'EPI_template' in c.template_based_segmentation or 1 in c.runSegmentationPreprocessing:
             err = '\n\n[!] C-PAC says: '\
@@ -1254,7 +1273,7 @@ def connect_anat_segmentation(workflow, strat_list, c, strat_name=None):
             node, out_file = strat['anatomical_brain_mask']
             workflow.connect(node, out_file,
                              seg_preproc_ants_prior_based, 'inputspec.anatomical_brain_mask')
-                             
+
             workflow.connect(c.ANTs_prior_seg_template_brain_list, 'local_path',
                              seg_preproc_ants_prior_based, 'inputspec.template_brain_list')
             workflow.connect(c.ANTs_prior_seg_template_segmentation_list, 'local_path',
@@ -1265,11 +1284,6 @@ def connect_anat_segmentation(workflow, strat_list, c, strat_name=None):
             seg_preproc_ants_prior_based.inputs.inputspec.left_wm_label = c.ANTs_prior_seg_left_WM_label
             seg_preproc_ants_prior_based.inputs.inputspec.right_wm_label = c.ANTs_prior_seg_right_WM_label
 
-            # TODO ASH review with forking function
-            if 0 in c.ANTs_prior_based_segmentation:
-                strat = strat.fork()
-                new_strat_list.append(strat)
-
             strat.append_name(seg_preproc_ants_prior_based.name)
             strat.update_resource_pool({
                 'anatomical_gm_mask': (seg_preproc_ants_prior_based, 'outputspec.gm_mask'),
@@ -1278,6 +1292,7 @@ def connect_anat_segmentation(workflow, strat_list, c, strat_name=None):
             })
 
     strat_list += new_strat_list
+
 
     if 'T1_template' in c.template_based_segmentation:
 

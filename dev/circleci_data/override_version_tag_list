@@ -74,6 +74,9 @@ if __name__ == '__main__':
         len(argv) > 1 and argv[1] in {'-h', '--help'}
     ) or stdin.isatty():
         print("""Usage:
+Use `prep_merge` to just give a branch or SHA to prep merging onto.
+
+Direct usage:
 git diff enh/nested_config --stat=99999 | override_version_tag_list""")
     else:
         print_checkout_file_list(stdin.read())

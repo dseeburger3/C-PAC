@@ -17,6 +17,7 @@ from time import strftime
 import nipype
 import nipype.pipeline.engine as pe
 import nipype.interfaces.fsl as fsl
+import nipype.interfaces.freesurfer as freesurfer
 import nipype.interfaces.io as nio
 import nipype.interfaces.utility as util
 from nipype.interfaces.afni import preprocess
@@ -401,9 +402,9 @@ Please, make yourself aware of how it works and its assumptions:
             log_nodes_initial(workflow)
 
             # Add status callback function that writes in callback log
-            if nipype.__version__ not in ('1.1.2'):
+            if nipype.__version__ not in ('1.5.1'):
                 err_msg = "This version of Nipype may not be compatible with " \
-                            "CPAC v%s, please install Nipype version 1.1.2\n" \
+                            "CPAC v%s, please install Nipype version 1.5.1\n" \
                             % (CPAC.__version__)
                 logger.error(err_msg)
             else:
@@ -729,6 +730,10 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
         ("anat", "acpc_template_brain"),
     ]
 
+    if 'FreeSurfer-ABCD' in c.skullstrip_option:
+        template_keys.append(("anat", "template_skull_for_anat_2mm"))
+        template_keys.append(("anat", "ref_mask_2mm"))
+
     for key_type, key in template_keys:
 
         if isinstance(getattr(c, key), str) or getattr(c, key) == None:
@@ -808,14 +813,18 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
     templates_for_resampling = [
         (c.resolution_for_anat, c.template_brain_only_for_anat, 'template_brain_for_anat', 'resolution_for_anat'),
         (c.resolution_for_anat, c.template_skull_for_anat, 'template_skull_for_anat', 'resolution_for_anat'),
+        (c.resolution_for_anat, c.template_brain_mask_for_anat, 'template_brain_mask_for_anat', 'resolution_for_anat'),
         (c.resolution_for_anat, c.template_symmetric_brain_only, 'template_symmetric_brain', 'resolution_for_anat'),
         (c.resolution_for_anat, c.template_symmetric_skull, 'template_symmetric_skull', 'resolution_for_anat'),
         (c.resolution_for_anat, c.dilated_symmetric_brain_mask, 'template_dilated_symmetric_brain_mask', 'resolution_for_anat'),
         (c.resolution_for_anat, c.ref_mask, 'template_ref_mask', 'resolution_for_anat'),
         (c.resolution_for_func_preproc, c.template_brain_only_for_func, 'template_brain_for_func_preproc', 'resolution_for_func_preproc'),
         (c.resolution_for_func_preproc, c.template_skull_for_func, 'template_skull_for_func_preproc', 'resolution_for_func_preproc'),
+        (c.resolution_for_func_preproc, c.template_brain_mask_for_func, 'template_brain_mask_for_func_preproc', 'resolution_for_func_preproc'),
         (c.resolution_for_func_preproc, c.template_epi, 'template_epi', 'resolution_for_func_preproc'),  # no difference of skull and only brain
+        (c.resolution_for_func_preproc, c.template_epi_mask, 'template_epi_mask', 'resolution_for_func_preproc'),  
         (c.resolution_for_func_derivative, c.template_epi, 'template_epi_derivative', 'resolution_for_func_derivative'),  # no difference of skull and only brain
+        (c.resolution_for_func_derivative, c.template_epi_mask, 'template_epi_mask_derivative', 'resolution_for_func_derivative'),  
         (c.resolution_for_func_derivative, c.template_brain_only_for_func, 'template_brain_for_func_derivative', 'resolution_for_func_preproc'),
         (c.resolution_for_func_derivative, c.template_skull_for_func, 'template_skull_for_func_derivative', 'resolution_for_func_preproc'),
     ]
@@ -1006,16 +1015,52 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
 
                 new_strat_list += [new_strat]
 
+            elif c.run_freesurfer:
+
+                anat_preproc = create_anat_preproc(method='freesurfer',
+                                                config=c,
+                                                acpc_target=acpc_target,
+                                                wf_name='anat_preproc_freesurfer_%d' % num_strat,
+                                                sub_dir=os.path.join(c.workingDirectory, workflow_name))
+
+                new_strat = strat.fork()
+                node, out_file = new_strat['anatomical']
+                workflow.connect(node, out_file,
+                                anat_preproc, 'inputspec.anat')
+                workflow.connect(c.acpc_template_skull, 'local_path',
+                                anat_preproc, 'inputspec.template_skull_for_acpc')
+                workflow.connect(c.acpc_template_brain, 'local_path',
+                                anat_preproc, 'inputspec.template_brain_only_for_acpc')
+                new_strat.append_name(anat_preproc.name)
+                new_strat.set_leaf_properties(anat_preproc, 'outputspec.brain')
+                new_strat.update_resource_pool({
+                    'anatomical_brain': (anat_preproc, 'outputspec.brain'),
+                    'anatomical_skull_leaf': (anat_preproc, 'outputspec.anat_skull_leaf'),
+                    'anatomical_brain_mask': (anat_preproc, 'outputspec.brain_mask'),
+                    'anatomical_wm_mask': (anat_preproc, 'outputspec.wm_mask'),
+                    'anatomical_gm_mask': (anat_preproc, 'outputspec.gm_mask'),
+                    'anatomical_csf_mask': (anat_preproc, 'outputspec.csf_mask'),
+                    'surface_curvature': (anat_preproc, 'outputspec.curv'),
+                    'pial_surface_mesh': (anat_preproc, 'outputspec.pial'),
+                    'smoothed_surface_mesh': (anat_preproc, 'outputspec.smoothwm'),
+                    'spherical_surface_mesh': (anat_preproc, 'outputspec.sphere'),
+                    'sulcal_depth_surface_maps': (anat_preproc, 'outputspec.sulc'),
+                    'cortical_thickness_surface_maps': (anat_preproc, 'outputspec.thickness'),
+                    'cortical_volume_surface_maps': (anat_preproc, 'outputspec.volume'),
+                    'white_matter_surface_mesh': (anat_preproc, 'outputspec.white'),
+                })
+
+                new_strat_list += [new_strat]
+
             else:
-                if not any(o in c.skullstrip_option for o in ["AFNI", "FSL", "niworkflows-ants", "unet"]):
+                if not any(o in c.skullstrip_option for o in ["AFNI", "FSL", "niworkflows-ants", "FreeSurfer-ABCD", "unet"]):
                     err = '\n\n[!] C-PAC says: Your skull-stripping method options ' \
-                        'setting does not include either \'AFNI\' or \'FSL\' or \'niworkflows-ants\'.\n\n' \
+                        'setting does not include either \'AFNI\' or \'FSL\' or \'niworkflows-ants\' or \'FreeSurfer-ABCD\' or \'unet\'.\n\n' \
                         'Options you provided:\nskullstrip_option: {0}' \
                         '\n\n'.format(str(c.skullstrip_option))
                     raise Exception(err)
 
                 if "AFNI" in c.skullstrip_option:
-
                     anat_preproc = create_anat_preproc(method='afni',
                                                     config=c,
                                                     acpc_target=acpc_target,
@@ -1104,7 +1149,7 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
                     workflow.connect(node, out_file,
                                     anat_preproc, 'inputspec.template_skull_for_anat')
                     workflow.connect(c.acpc_template_skull, 'local_path',
-                                    anat_preproc, 'inputspec.template_skull_for_acpc')                               
+                                    anat_preproc, 'inputspec.template_skull_for_acpc')
                     workflow.connect(c.acpc_template_brain, 'local_path',
                                     anat_preproc, 'inputspec.template_brain_only_for_acpc')
                     new_strat.append_name(anat_preproc.name)
@@ -1113,6 +1158,46 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
                         'anatomical_brain': (anat_preproc, 'outputspec.brain'),
                         'anatomical_skull_leaf': (anat_preproc, 'outputspec.anat_skull_leaf'),
                         'anatomical_brain_mask': (anat_preproc, 'outputspec.brain_mask'),
+                    })
+
+                    new_strat_list += [new_strat]
+                
+                if "FreeSurfer-ABCD" in c.skullstrip_option:
+                    
+                    anat_preproc = create_anat_preproc(method='freesurfer-abcd',
+                                                    config=c,
+                                                    acpc_target=acpc_target,
+                                                    wf_name='anat_preproc_freesurfer_abcd_%d' % num_strat,
+                                                    sub_dir=os.path.join(c.workingDirectory, workflow_name))
+
+                    new_strat = strat.fork()
+                    node, out_file = new_strat['anatomical']
+                    workflow.connect(node, out_file,
+                                    anat_preproc, 'inputspec.anat')
+
+                    workflow.connect(c.acpc_template_skull, 'local_path',
+                                    anat_preproc, 'inputspec.template_skull_for_acpc')
+
+                    workflow.connect(c.acpc_template_brain, 'local_path',
+                                    anat_preproc, 'inputspec.template_brain_only_for_acpc')
+
+                    workflow.connect(c.template_skull_for_anat_2mm, 'local_path',
+                                    anat_preproc, 'inputspec.template_skull_for_anat_2mm')
+
+                    workflow.connect(c.ref_mask_2mm, 'local_path',
+                                    anat_preproc, 'inputspec.ref_mask_2mm')
+
+                    node, out_file = strat['template_brain_mask_for_anat']
+                    workflow.connect(node, out_file,
+                                    anat_preproc, 'inputspec.template_brain_mask_for_anat')
+
+                    new_strat.append_name(anat_preproc.name)
+                    new_strat.set_leaf_properties(anat_preproc, 'outputspec.brain')
+                    new_strat.update_resource_pool({
+                        'anatomical_brain': (anat_preproc, 'outputspec.brain'),
+                        'anatomical_skull_leaf': (anat_preproc, 'outputspec.anat_skull_leaf'),
+                        'anatomical_brain_mask': (anat_preproc, 'outputspec.brain_mask'),
+                        'freesurfer_subject_dir': (anat_preproc, 'outputspec.freesurfer_subject_dir'),
                     })
 
                     new_strat_list += [new_strat]
@@ -1308,6 +1393,20 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
                 workflow.connect(
                     node, out_file,
                     ants_reg_anat_mni, 'inputspec.reference_skull'
+                    )
+
+                # pass the reference mask file
+                node, out_file = strat['template_brain_mask_for_anat']
+                workflow.connect(
+                    node, out_file,
+                    ants_reg_anat_mni, 'inputspec.reference_mask'
+                    )
+
+                # pass the moving mask file
+                node, out_file = strat['anatomical_brain_mask']
+                workflow.connect(
+                    node, out_file,
+                    ants_reg_anat_mni, 'inputspec.moving_mask'
                     )
 
                 # Test if a lesion mask is found for the anatomical image
@@ -1549,6 +1648,19 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
                     workflow.connect(node, out_file,
                                         ants_reg_anat_symm_mni, 'inputspec.reference_skull')
 
+                    # pass the reference mask file
+                    node, out_file = strat['template_brain_mask_for_anat']
+                    workflow.connect(
+                        node, out_file,
+                        ants_reg_anat_symm_mni, 'inputspec.reference_mask'
+                        )
+
+                    # pass the reference mask file
+                    node, out_file = strat['anatomical_brain_mask']
+                    workflow.connect(
+                        node, out_file,
+                        ants_reg_anat_symm_mni, 'inputspec.moving_mask'
+                        )
 
                     if 'lesion_mask' in sub_dict and c.use_lesion_mask:
                         # Create lesion preproc node to apply afni Refit & Resample
@@ -1605,7 +1717,8 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
             strat_list += new_strat_list
 
         # Inserting Segmentation Preprocessing Workflow
-        workflow, strat_list = connect_anat_segmentation(workflow, strat_list, c)
+        if not c.run_freesurfer:
+            workflow, strat_list = connect_anat_segmentation(workflow, strat_list, c)
 
 
     # Functional / BOLD time
@@ -2266,11 +2379,41 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
                     )
 
                     if 'Bandpass' in regressors_selector:
+                        
+                        bandpass_selector = regressors_selector.get('Bandpass')
+                        if bandpass_selector.get('method'):
+                            bandpass_method = bandpass_selector.get('method')
+                        else:
+                            bandpass_method = 'default'
+
+                        if not bandpass_method in ['default', 'AFNI']:
+                            err = "\n\n[!] C-PAC says: You must choose 'default' or 'AFNI' as filtering method, " \
+                                    "but you provided:\n{0}\n\n".format(bandpass_method)
+                            raise Exception(err)
+                        
                         if 'Before' in c.filtering_order:
                             nuisance_regression_after_workflow = create_nuisance_regression_workflow(
                                 regressors_selector,
                                 name='nuisance_regression_after-filt_{0}_'
                                      '{1}'.format(regressors_selector_i, num_strat))
+                            
+                            if bandpass_method == 'AFNI':
+
+                                node, out_file = new_strat['functional_brain_mask']
+
+                                workflow.connect(
+                                    node, out_file,
+                                    filtering,
+                                    'inputspec.functional_brain_mask_file_path'
+                                )
+
+                                node, node_out = new_strat['tr']
+
+                                workflow.connect(
+                                    node, node_out,
+                                    filtering,
+                                    'inputspec.tr'
+                                )
 
                             workflow.connect(
                                 filtering,
@@ -2343,6 +2486,25 @@ def build_workflow(subject_id, sub_dict, c, pipeline_name=None, num_ants_cores=1
                             new_strat.append_name(nuisance_regression_after_workflow.name)
 
                         elif 'After' in c.filtering_order:
+
+                            if bandpass_method == 'AFNI':
+
+                                node, out_file = new_strat['functional_brain_mask']
+
+                                workflow.connect(
+                                    node, out_file,
+                                    filtering,
+                                    'inputspec.functional_brain_mask_file_path'
+                                )
+
+                                node, node_out = new_strat['tr']
+
+                                workflow.connect(
+                                    node, node_out,
+                                    filtering,
+                                    'inputspec.tr'
+                                )
+
                             workflow.connect(
                                 nuisance_regression_before_workflow,
                                 'outputspec.residual_file_path',
