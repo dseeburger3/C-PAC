@@ -168,7 +168,6 @@ def write_roi_npz(roi_csv, out_type=None):
 
 
 def get_roi_timeseries(wf_name='roi_timeseries'):
-
     """
     Workflow to extract timeseries for each node in the ROI mask.
     For each node, mean across all the timepoint is calculated and stored
@@ -351,7 +350,6 @@ def get_spatial_map_timeseries(wf_name='spatial_map_timeseries'):
 
 
 def get_vertices_timeseries(wf_name='vertices_timeseries'):
-
     """
     Workflow to get vertices time series from a FreeSurfer surface file
 
@@ -419,7 +417,6 @@ def get_vertices_timeseries(wf_name='vertices_timeseries'):
 
 
 def get_normalized_moments(wf_name='normalized_moments'):
-
     """
     Workflow to calculate the normalized moments for skewedness calculations
 
@@ -700,7 +697,6 @@ def gen_voxel_timeseries(data_file, template, output_type):
 
 def gen_vertices_timeseries(rh_surface_file,
                         lh_surface_file):
-
     """
     Method to extract timeseries from vertices
     of a freesurfer surface file

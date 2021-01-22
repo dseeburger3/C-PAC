@@ -25,13 +25,13 @@ def generate_inverse_transform_flags(transform_list):
     inverse_transform_flags=[]
     for transform in transform_list:
         # check `blip_warp_inverse` file name and rename it
-        if 'WARPINV' in transform:    
+        if 'WARPINV' in transform:
             inverse_transform_flags.append(False)
         if 'updated_affine' in transform:
             inverse_transform_flags.append(True)
         if 'Initial' in transform:
             inverse_transform_flags.append(True)
-        if 'Rigid' in transform: 
+        if 'Rigid' in transform:
             inverse_transform_flags.append(True)
         if 'Affine' in transform:
             inverse_transform_flags.append(True)
@@ -44,7 +44,7 @@ def hardcoded_reg(moving_brain, reference_brain, moving_skull,
                   reference_skull, reference_mask, moving_mask, ants_para, fixed_image_mask=None, interp=None):
 
     #TODO: expand transforms to cover all in ANTs para
-    
+
     regcmd = ["antsRegistration"]
     for para_index in range(len(ants_para)):
         for para_type in ants_para[para_index]:
@@ -201,13 +201,13 @@ def hardcoded_reg(moving_brain, reference_brain, moving_skull,
                             regcmd.append("--winsorize-image-intensities")
                             regcmd.append("[{0},{1}]".format(ants_para[para_index][para_type][trans_index][trans_type]['winsorize-image-intensities']
                                                             ['lowerQuantile'], ants_para[para_index][para_type][trans_index][trans_type]['winsorize-image-intensities']['upperQuantile']))
-    
+
             elif para_type == 'masks':
-                # lesion preproc has 
+                # lesion preproc has
                 if fixed_image_mask is not None:
                     regcmd.append("--masks")
                     regcmd.append(str(fixed_image_mask))
-                else: 
+                else:
                     if ants_para[para_index][para_type]['fixed_image_mask'] == False and ants_para[para_index][para_type]['moving_image_mask'] == True:
                         err_msg = 'Masks option in ANTs parameters: %d is not supported. ' \
                             'Please set `fixed_image_mask` as True. ' \
@@ -222,7 +222,7 @@ def hardcoded_reg(moving_brain, reference_brain, moving_skull,
                     else:
                         continue
 
-    if interp is not None: 
+    if interp is not None:
         regcmd.append("--interpolation")
         regcmd.append("{0}".format(interp))
 
@@ -257,6 +257,7 @@ def hardcoded_reg(moving_brain, reference_brain, moving_skull,
                         "successfully.\n\n")
 
     return warp_list, warped_image
+
 
 def change_itk_transform_type(input_affine_file):
     """

@@ -1,10 +1,10 @@
 --- 
 version: 2.1
 
-commands: 
-  build-images: 
-    parameters: 
-      variant: 
+commands:
+  build-images:
+    parameters:
+      variant:
         default: ""
         type: string
     steps: 
@@ -38,13 +38,12 @@ commands:
             equal: 
               - ""
               - "<< parameters.variant >>"
-          steps: 
-            - 
-              run: 
+          steps:
+            - run:
                 command: "git clone -b 2.5.2 https://github.com/sylabs/singularity"
                 name: "Cloning Singularity 2.5.2"
       - set-up-singularity
-      - run: 
+      - run:
           command: |
               docker load < ${DOCKER_TARBALL}.tar.gz
               docker tag fcpindi/c-pac:${CIRCLE_BRANCH//\//_}${VARIANT} localhost:5000/fcpindi/c-pac:${CIRCLE_BRANCH//\//_}${VARIANT}

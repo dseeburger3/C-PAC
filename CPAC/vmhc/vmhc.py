@@ -11,9 +11,9 @@ from CPAC.registration import create_wf_calculate_ants_warp, \
                               output_func_to_standard
 from CPAC.image_utils import spatial_smooth
 
+
 def create_vmhc(workflow, num_strat, strat, pipeline_config_object,
         func_key='functional_nuisance_residuals', output_name='vmhc'):
-
     """
     Compute the map of brain functional homotopy, the high degree of synchrony
     in spontaneous activity between geometrically corresponding interhemispheric (i.e., homotopic) regions.
