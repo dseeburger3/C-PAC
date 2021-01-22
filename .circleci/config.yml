@@ -219,7 +219,7 @@ jobs:
               coverage run -m pytest --junitxml=test-results/junit.xml --continue-on-collection-errors dev/circleci_data/test_install.py
           name: "Testing C-PAC installation in Singularity Image"
       - run: 
-          command: "SINGULARITYENV_COVERAGE_FILE=.coverage.singularity singularity exec -B $PWD:/code C-PAC-CI.simg ./dev/circleci_data/test_in_image.sh"
+          command: "SINGULARITYENV_COVERAGE_FILE=.coverage.singularity singularity exec -B $PWD:/code cpac-singularity-image.simg ./dev/circleci_data/test_in_image.sh"
           name: "Running unit tests in Singularity image"
       - store_test_results: 
           path: test-results
@@ -260,7 +260,7 @@ jobs:
       - set-up-singularity
       - generate-random-run
       - run: 
-          command: "SINGULARITYENV_COVERAGE_FILE=.coverage.singularity-test-run singularity exec -H /home/circleci/project -B CPAC/resources/configs/test_configs:/test_configs C-PAC-CI.simg dev/circleci_data/run_command.sh"
+          command: "SINGULARITYENV_COVERAGE_FILE=.coverage.singularity-test-run singularity exec -H /home/circleci/project -B CPAC/resources/configs/test_configs:/test_configs cpac-singularity-image.simg dev/circleci_data/run_command.sh"
           name: "Running one participant in Singularity"
           no_output_timeout: 5h
       - persist_to_workspace: 
