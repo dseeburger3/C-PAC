@@ -115,6 +115,7 @@ commands:
               cd /opt/circleci/.pyenv/plugins/python-build/../.. && git pull && cd -
               pyenv install -v 3.7.9
               pyenv global 3.7.9
+              pip install pyyaml
           name: "Setting Python Version"
   set-up-singularity: 
     steps: 
