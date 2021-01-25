@@ -133,3 +133,18 @@ def create_randomise(name='randomise',working_dir=None,crash_dir=None):
   
 
     return wf
+
+
+def select(input_list):
+    import nibabel as nb
+    for i in input_list:
+        img = nb.load(i)
+        hdr = img.header
+        if hdr['cal_min'] == 0 and hdr['cal_max'] == 0:
+            print(f"Warning! {i} is an empty image because of no positive "
+                  "values in the unpermuted statistic image, and it could not "
+                  "be processed with tfce.")
+        if not hdr['cal_max'] == 0 and hdr['cal_min'] == 0:
+            selected_file = i
+
+    return i
