@@ -39,10 +39,10 @@ commands:
               - "<< parameters.variant >>"
           steps:
             - get-singularity:
-                version: 2.5.2
+                version: "2.5.2"
             - set-up-singularity:
-                version: 2.5.2
-                libssl_version: 1.0.0
+                version: "2.5.2"
+                libssl_version: "1.0"
             - run:
                 name: "Building Singularity 2 image from Docker image"
                 command: |
@@ -228,8 +228,8 @@ jobs:
           at: /home/circleci/
       - set-python-version
       - set-up-singularity:
-          version: 2.5.2
-          libssl_version: 1.0.0
+          version: "2.5.2"
+          libssl_version: "1.0"
       - run:
           command: |
               COVERAGE_FILE=.coverage.singularity-install
