@@ -50,6 +50,7 @@ commands:
                     docker tag fcpindi/c-pac:${CIRCLE_BRANCH//\//_}${VARIANT} localhost:5000/fcpindi/c-pac:${CIRCLE_BRANCH//\//_}${VARIANT}
                     docker push localhost:5000/fcpindi/c-pac:${CIRCLE_BRANCH//\//_}${VARIANT}
                     SINGULARITY_NOHTTPS=1 singularity build cpac-singularity-image${VARIANT}.simg docker://localhost:5000/fcpindi/c-pac:${CIRCLE_BRANCH//\//_}${VARIANT}
+                no_output_timeout: 5h
             # TODO: Build Singularity 3 image
           no_output_timeout: 5h
   check-for-built-images:
